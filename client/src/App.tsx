@@ -1,43 +1,82 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import type { Bautismo } from './models/Sacramento';
+import './styles/design-system.css';
+import './App.css';
+import Dashboard from './components/Dashboard';
 import FormularioBautismo from './components/FormularioBautismo';
-import localDB, { iniciarSincronizacion } from './database';
+import RecordCard from './components/RecordCard';
+import useSacraments from './hooks/useSacraments';
+import { syncManager } from './services/syncManager';
 
 function App() {
-  const [registros, setRegistros] = useState<any[]>([]);
+  const { sacraments, loading } = useSacraments();
 
   useEffect(() => {
-    // Iniciar la escucha de otros nodos
-    iniciarSincronizacion();
+    // Iniciar sincronización global al montar la app
+    syncManager.startSync();
 
-    // Cargar datos iniciales y escuchar cambios locales
-    const fetchDocs = () => {
-      localDB.allDocs({ include_docs: true }).then(res => {
-        setRegistros(res.rows.map(r => r.doc));
-      });
+    return () => {
+      syncManager.stopSync();
     };
-
-    fetchDocs();
-    
-    // Si entra un dato de otro nodo, actualizamos la vista
-    const changes = localDB.changes({ since: 'now', live: true, include_docs: true })
-      .on('change', fetchDocs);
-
-    return () => changes.cancel();
   }, []);
 
   return (
-    <div className="App">
-      <h1>Sacrament Ledger 📜</h1>
-      <FormularioBautismo />
-      
-      <h3>Libro de Registro (Nodo Local)</h3>
-      <ul>
-        {registros.map(reg => (
-          <li key={reg._id}>
-            {reg.nombre} - <b>Hash:</b> {reg.hash?.substring(0, 10)}...
-          </li>
-        ))}
-      </ul>
+    <div className="App" style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
+      <Dashboard />
+
+      <main className="container" style={{ paddingBottom: 'var(--space-xl)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 'var(--space-xl)', alignItems: 'start' }}>
+
+          <section>
+            <FormularioBautismo />
+          </section>
+
+          <section>
+            <h3 style={{
+              fontFamily: "'Playfair Display', serif",
+              color: 'var(--color-primary)',
+              marginTop: 0,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              Libro de Registros Recientes
+              <span style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                {sacraments.length} documentos
+              </span>
+            </h3>
+
+            {loading ? (
+              <div className="flex-center" style={{ height: '200px', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                <div className="animate-pulse-slow" style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--color-primary)' }} />
+                <p>Cargando Libro Mayor...</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
+                {sacraments.length === 0 ? (
+                  <div className="card glass flex-center" style={{ padding: 'var(--space-xl)', color: 'var(--color-text-secondary)' }}>
+                    No hay registros en este nodo parroquial.
+                  </div>
+                ) : (
+                  sacraments.map((record: Bautismo) => (
+                    <RecordCard key={record._id} record={record} />
+                  ))
+                )}
+              </div>
+            )}
+          </section>
+
+        </div>
+      </main>
+
+      <footer className="flex-center" style={{
+        padding: 'var(--space-xl)',
+        borderTop: '1px solid var(--glass-border)',
+        color: 'var(--color-text-secondary)',
+        fontSize: '0.8rem'
+      }}>
+        Sacrament Ledger v1.0.0 • Nodo Distribuido Offline-First • {new Date().getFullYear()}
+      </footer>
     </div>
   );
 }

@@ -1,76 +1,139 @@
 import React, { useState } from 'react';
-import localDB from '../database';
-import { crearRegistroBautismo } from '../models/Sacramento';
+import useSacraments from '../hooks/useSacraments';
 
-const FormularioBautismo = () => {
+const FormularioBautismo: React.FC = () => {
+  const { addSacrament } = useSacraments();
   const [formData, setFormData] = useState({
     nombre: '',
     dni: '',
     fechaNacimiento: '',
     padres: '',
     padrinos: '',
-    parroquiaId: 'PARROQUIA_001' // Esto vendría de un config local
   });
 
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', message: string }>({
+    type: 'idle',
+    message: ''
+  });
 
   const registrar = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus('Procesando...');
+    setStatus({ type: 'loading', message: 'Sellando registro en el Libro Mayor...' });
 
     try {
-      // 1. Validar si ya existe (Evitar el problema de tu esposa)
-      // Buscamos por nombre y fecha si no hay DNI
-      const busqueda = await localDB.find({
-        selector: {
-          nombre: { $eq: formData.nombre },
-          fechaNacimiento: { $eq: formData.fechaNacimiento }
-        }
+      const result = await addSacrament({
+        ...formData,
+        dni: formData.dni || `TEMP_${Date.now()}`
       });
 
-      if (busqueda.docs.length > 0) {
-        setStatus('⚠️ Error: Esta persona ya tiene un registro de bautismo.');
-        return;
+      if (result.success) {
+        setStatus({ type: 'success', message: '✅ Sacramento Registrado con Éxito e Integridad Garantizada.' });
+        setFormData({ nombre: '', dni: '', fechaNacimiento: '', padres: '', padrinos: '' });
+
+        // Reset status after 5 seconds
+        setTimeout(() => setStatus({ type: 'idle', message: '' }), 5000);
+      } else {
+        setStatus({ type: 'error', message: `❌ Error: ${result.error}` });
       }
-
-      // 2. Obtener el hash del último registro para encadenarlo (Inmutabilidad)
-      // Por ahora usaremos '0' si es el primero
-      const ultimoHash = '0'; 
-
-      // 3. Crear el objeto con Hash
-      const nuevoBautismo = crearRegistroBautismo(
-        {
-          nombre: formData.nombre,
-          dni: formData.dni || `TEMP_${Date.now()}`, // Fallback si no hay DNI
-          fechaNacimiento: formData.fechaNacimiento,
-          parroquiaId: formData.parroquiaId
-          // Nota: Puedes extender el modelo para padres/padrinos
-        },
-        ultimoHash
-      );
-
-      // 4. Guardar en PouchDB (Localmente)
-      await localDB.put(nuevoBautismo);
-      
-      setStatus('✅ Registrado localmente. Se sincronizará al detectar internet.');
-      setFormData({ nombre: '', dni: '', fechaNacimiento: '', padres: '', padrinos: '', parroquiaId: 'PARROQUIA_001' });
-      
     } catch (err) {
-      console.error(err);
-      setStatus('❌ Error al guardar en el nodo.');
+      setStatus({ type: 'error', message: '❌ Error crítico en el nodo parroquial.' });
     }
   };
 
   return (
-    <div style={{ padding: '20px', maxWidth: '400px', border: '1px solid #ccc' }}>
-      <h2>Nuevo Bautismo</h2>
-      <form onSubmit={registrar}>
-        <input type="text" placeholder="Nombre Completo" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required /><br/><br/>
-        <input type="text" placeholder="DNI (Opcional)" value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} /><br/><br/>
-        <input type="date" value={formData.fechaNacimiento} onChange={e => setFormData({...formData, fechaNacimiento: e.target.value})} required /><br/><br/>
-        <button type="submit">Garantizar Sacramento</button>
+    <div className="card glass animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto var(--space-xl)' }}>
+      <h2 style={{
+        fontFamily: "'Playfair Display', serif",
+        color: 'var(--color-primary)',
+        marginTop: 0,
+        textAlign: 'center'
+      }}>
+        Nuevo Registro de Bautismo
+      </h2>
+
+      <form onSubmit={registrar} style={{ display: 'grid', gap: 'var(--space-md)' }}>
+        <div className="form-group">
+          <label style={{ display: 'block', marginBottom: 'var(--space-xs)', fontWeight: 600 }}>Nombre Completo del Bautizado</label>
+          <input
+            type="text"
+            placeholder="Ej. Juan Pérez García"
+            value={formData.nombre}
+            onChange={e => setFormData({ ...formData, nombre: e.target.value })}
+            required
+            style={{ width: '100%', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', border: '1px solid #ddd' }}
+          />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: 'var(--space-xs)', fontWeight: 600 }}>DNI / Cédula</label>
+            <input
+              type="text"
+              placeholder="Opcional"
+              value={formData.dni}
+              onChange={e => setFormData({ ...formData, dni: e.target.value })}
+              style={{ width: '100%', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', border: '1px solid #ddd' }}
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', marginBottom: 'var(--space-xs)', fontWeight: 600 }}>Fecha de Nacimiento</label>
+            <input
+              type="date"
+              value={formData.fechaNacimiento}
+              onChange={e => setFormData({ ...formData, fechaNacimiento: e.target.value })}
+              required
+              style={{ width: '100%', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', border: '1px solid #ddd' }}
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label style={{ display: 'block', marginBottom: 'var(--space-xs)', fontWeight: 600 }}>Padres</label>
+          <input
+            type="text"
+            placeholder="Nombres de los padres"
+            value={formData.padres}
+            onChange={e => setFormData({ ...formData, padres: e.target.value })}
+            required
+            style={{ width: '100%', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', border: '1px solid #ddd' }}
+          />
+        </div>
+
+        <div className="form-group">
+          <label style={{ display: 'block', marginBottom: 'var(--space-xs)', fontWeight: 600 }}>Padrinos</label>
+          <input
+            type="text"
+            placeholder="Nombres de los padrinos"
+            value={formData.padrinos}
+            onChange={e => setFormData({ ...formData, padrinos: e.target.value })}
+            required
+            style={{ width: '100%', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)', border: '1px solid #ddd' }}
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={status.type === 'loading'}
+          style={{ width: '100%', marginTop: 'var(--space-md)', justifyContent: 'center' }}
+        >
+          {status.type === 'loading' ? 'Procesando...' : 'Garantizar Sacramento'}
+        </button>
       </form>
-      <p>{status}</p>
+
+      {status.message && (
+        <div style={{
+          marginTop: 'var(--space-md)',
+          padding: 'var(--space-md)',
+          borderRadius: 'var(--radius-md)',
+          textAlign: 'center',
+          backgroundColor: status.type === 'success' ? 'rgba(46, 125, 50, 0.1)' : status.type === 'error' ? 'rgba(198, 40, 40, 0.1)' : 'transparent',
+          color: status.type === 'success' ? 'var(--color-success)' : status.type === 'error' ? 'var(--color-error)' : 'inherit',
+          fontWeight: 600
+        }}>
+          {status.message}
+        </div>
+      )}
     </div>
   );
 };
