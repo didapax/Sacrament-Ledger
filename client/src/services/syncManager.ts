@@ -4,7 +4,9 @@
  * Handles network detection, retry logic, and sync state management
  */
 
-import PouchDB from 'pouchdb';
+import PouchDB_raw from 'pouchdb';
+const PouchDB = (PouchDB_raw as any).default || PouchDB_raw;
+
 import localDB from '../database';
 import config from '../config';
 import { conflictResolver } from './conflictResolver';
@@ -99,45 +101,39 @@ export class SyncManager {
             });
 
             // Attach event handlers
-            this.syncHandler
-                .on('change', (info) => {
-                    console.log('📥 Sync change:', info);
-                    this.handleSyncChange(info);
-                })
-                .on('paused', (err) => {
-                    if (err) {
-                        console.error('⏸️ Sync paused with error:', err);
+            if (this.syncHandler) {
+                this.syncHandler
+                    .on('change', (info: PouchDB.Replication.SyncResult<{}>) => {
+                        console.log('📥 Sync change:', info);
+                        this.handleSyncChange(info);
+                    })
+                    .on('paused', (err: any) => {
+                        if (err) {
+                            console.error('⏸️ Sync paused with error:', err);
+                            this.handleSyncError(err);
+                        } else {
+                            console.log('⏸️ Sync paused (up to date)');
+                            this.updateState({
+                                status: 'online',
+                                lastSync: Date.now(),
+                                syncProgress: 100,
+                            });
+                            this.retryCount = 0;
+                        }
+                    })
+                    .on('active', () => {
+                        console.log('▶️ Sync active');
+                        this.updateState({ status: 'syncing' });
+                    })
+                    .on('denied', (err: any) => {
+                        console.error('🚫 Sync denied:', err);
                         this.handleSyncError(err);
-                    } else {
-                        console.log('⏸️ Sync paused (up to date)');
-                        this.updateState({
-                            status: 'online',
-                            lastSync: Date.now(),
-                            syncProgress: 100,
-                        });
-                        this.retryCount = 0;
-                    }
-                })
-                .on('active', () => {
-                    console.log('▶️ Sync active');
-                    this.updateState({ status: 'syncing' });
-                })
-                .on('denied', (err) => {
-                    console.error('🚫 Sync denied:', err);
-                    this.handleSyncError(err);
-                })
-                .on('error', (err) => {
-                    console.error('❌ Sync error:', err);
-                    this.handleSyncError(err);
-                })
-                .on('complete', (info) => {
-                    console.log('✅ Sync complete:', info);
-                    this.updateState({
-                        status: 'online',
-                        lastSync: Date.now(),
-                        syncProgress: 100,
+                    })
+                    .on('error', (err: any) => {
+                        console.error('❌ Sync error:', err);
+                        this.handleSyncError(err);
                     });
-                });
+            }
 
             // Update pending count
             await this.updatePendingCount();
@@ -146,6 +142,7 @@ export class SyncManager {
             this.handleSyncError(error);
         }
     }
+
 
     /**
      * Stop synchronization

@@ -1,5 +1,9 @@
-import PouchDB from 'pouchdb';
-import PouchDBFind from 'pouchdb-find';
+import PouchDB_raw from 'pouchdb';
+import PouchDBFind_raw from 'pouchdb-find';
+
+const PouchDB = (PouchDB_raw as any).default || PouchDB_raw;
+const PouchDBFind = (PouchDBFind_raw as any).default || PouchDBFind_raw;
+
 
 PouchDB.plugin(PouchDBFind);
 
@@ -13,11 +17,12 @@ export const iniciarSincronizacion = () => {
   localDB.sync(remoteDB, {
     live: true,       // Se mantiene escuchando cambios
     retry: true       // Si se cae el internet, reintenta automáticamente
-  }).on('change', (info) => {
+  }).on('change', (info: PouchDB.Replication.SyncResult<{}>) => {
     console.log('¡Nuevo sacramento recibido de otro nodo!', info);
-  }).on('error', (err) => {
+  }).on('error', (err: any) => {
     console.error('Error de conexión, trabajando en modo local...', err);
   });
 };
+
 
 export default localDB;
