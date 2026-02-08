@@ -1,8 +1,10 @@
-import PouchDB_raw from 'pouchdb';
-import PouchDBFind_raw from 'pouchdb-find';
+import PouchDB from 'pouchdb-browser';
+import PouchDBFind from 'pouchdb-find';
 
-const PouchDB = (PouchDB_raw as any).default || PouchDB_raw;
-const PouchDBFind = (PouchDBFind_raw as any).default || PouchDBFind_raw;
+// Polyfill for PouchDB in some environments
+if (typeof (window as any).global === 'undefined') {
+  (window as any).global = window;
+}
 
 
 PouchDB.plugin(PouchDBFind);

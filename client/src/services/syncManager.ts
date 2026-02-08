@@ -4,8 +4,7 @@
  * Handles network detection, retry logic, and sync state management
  */
 
-import PouchDB_raw from 'pouchdb';
-const PouchDB = (PouchDB_raw as any).default || PouchDB_raw;
+import PouchDB from 'pouchdb-browser';
 
 import localDB from '../database';
 import config from '../config';

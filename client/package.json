@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "pouchdb": "^9.0.0",
-    "pouchdb-browser": "^9.0.0",
-    "pouchdb-find": "^9.0.0",
+    "events": "^3.3.0",
+    "pouchdb-browser": "8.0.1",
+    "pouchdb-find": "8.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "uuid": "^13.0.0"
