@@ -8,7 +8,10 @@ const app = express();
 const port = process.env.PORT || 5984;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}));
 
 // Configure PouchDB to use a specific directory for data
 const PouchDB = pouchdb.defaults({
