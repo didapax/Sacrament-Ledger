@@ -21,8 +21,8 @@ export const useSacraments = () => {
             });
 
             const docs = result.rows
-                .map(row => row.doc as any)
-                .filter(doc => doc && doc.tipo === 'BAUTISMO')
+                .map(row => row.doc as PouchDB.Core.ExistingDocument<Bautismo & PouchDB.Core.AllDocsMeta> | undefined)
+                .filter((doc): doc is PouchDB.Core.ExistingDocument<Bautismo & PouchDB.Core.AllDocsMeta> => doc !== undefined && doc.tipo === 'BAUTISMO')
                 .map(doc => encryptionService.decryptFields(doc) as Bautismo);
 
             setSacraments(docs);
@@ -55,7 +55,7 @@ export const useSacraments = () => {
             // 1. Get last record for hash chaining
             const allDocs = await localDB.find({
                 selector: { tipo: 'BAUTISMO' },
-                sort: [{ timestamp: 'desc' }],
+                sort: [{ tipo: 'desc' }, { timestamp: 'desc' }],
                 limit: 1
             });
 
